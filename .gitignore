@@ -16,6 +16,7 @@ xcompact3d
 post
 data/
 out/
+3d_snapshots/
 stats/
 planes/
 .DS_Store

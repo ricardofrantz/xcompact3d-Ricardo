@@ -319,10 +319,10 @@ module param
   real(mytype) :: dens1, dens2
   real(mytype) :: C_filter
 
-  real(mytype) :: theta, thetad
-  real(mytype) :: theta1 ,theta2 ,theta3
-  real(mytype) :: thetad1,thetad2,thetad3
-  integer :: istheta
+  ! real(mytype) :: theta, thetad
+  ! real(mytype) :: theta1 ,theta2 ,theta3
+  ! real(mytype) :: thetad1,thetad2,thetad3
+  ! integer :: istheta
 
   !! Channel flow
   integer :: icpg, icfr

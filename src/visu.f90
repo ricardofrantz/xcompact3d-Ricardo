@@ -191,7 +191,7 @@ contains
     !
     io = 67
     !call write_xdmf_header(io, num, './data/xdmf/3d_snapshots', nx, ny, nz)
-    call write_xdmf_header(io, num, './3d_snapshots', nx, ny, nz)
+    call write_xdmf_header(io, num, './xdmf/3d_snapshots', nx, ny, nz)
     !###################################################################
     !! Write velocity
     !###################################################################
@@ -391,7 +391,7 @@ contains
         write(io,*)'           <DataItem Format="Binary"'
         write(io,*)'            DataType="Float" Precision="'//CHAR(48+prec)//'" Endian="little" Seek="0"'
         write(io,*)'            Dimensions="',nz,ny,nx,'">'
-        write(io,*)'              ../3d_snapshots/'//filename//'-'//trim(num)//'.bin'
+        write(io,*)'              ./3d_snapshots/'//filename//'-'//trim(num)//'.bin'
         write(io,*)'           </DataItem>'
         write(io,*)'        </Attribute>'
       endif

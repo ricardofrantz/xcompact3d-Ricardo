@@ -72,7 +72,7 @@ cnu = 0.351              ! Ratio between hypervisvosity at k_m=2/3pi and k_c= pi
 ! Basic I/O
 irestart = 0          ! Read initial flow field ?
 icheckpoint = 20000    ! Frequency for writing backup file
-ioutput = 500        ! Frequency for visualization
+ioutput = 50        ! Frequency for visualization
 nvisu = 1             ! Size for visualisation collection
 
 /End
@@ -95,10 +95,10 @@ initstat = 31250      ! Time steps after which statistics are collected
 &ScalarParam
 !================
 Sc(1) = 1.0           ! Schmidt number
-nclxS1 = 2
-nclxSn = 2
-nclyS1 = 2
-nclySn = 2
+nclxS1 = 0
+nclxSn = 0
+nclyS1 = 1
+nclySn = 1
 nclzS1 = 0
 nclzSn = 0
 /End
@@ -118,9 +118,8 @@ SmagWallDamp = 0  ! Smagorinsky damping function for ABL if 1
 !================
 &Tripping
 !================
-itrip=1               !1 to activate the tripping for TBL, 0 otherwise for LBL 
+itrip=0               !1 to activate the tripping for TBL, 0 otherwise for LBL 
 A_tr = 0.356625       !to be use with care, value is mesh-dependent
-
 /End
 &CASE
 /End

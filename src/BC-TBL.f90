@@ -16,7 +16,7 @@ module tbl
 
 
   PRIVATE ! All functions/subroutines private by default
-  PUBLIC :: init_tbl, boundary_conditions_tbl, postprocess_tbl, tbl_flrt
+  PUBLIC :: init_tbl, boundary_conditions_tbl, postprocess_tbl, tbl_flrt, momentum_forcing_tbl
 
 
 contains
@@ -500,6 +500,48 @@ end subroutine tbl_flrt
    return
   end subroutine perturb_init_tbl
     !############################################################################
+  subroutine momentum_forcing_tbl(dux1,duy1,duz1,ux1,uy1,uz1,phi1)
+    !
+    !*******************************************************************************
+  
+      USE param
+      USE variables
+      USE decomp_2d
+  
+      implicit none
+  
+      real(mytype),dimension(xsize(1),xsize(2),xsize(3), ntime) :: dux1, duy1, duz1
+      real(mytype),dimension(xsize(1),xsize(2),xsize(3)) :: ux1, uy1, uz1
+      real(mytype),dimension(xsize(1),xsize(2),xsize(3), numscalar) :: phi1
+  
+      integer :: j
+     
+      ! !! BL Forcing (Pressure gradient or geostrophic wind)
+      ! if (iPressureGradient.eq.1) then
+      !    dux1(:,:,:,1)=dux1(:,:,:,1)+ustar**2./dBL
+      ! else if (iCoriolis.eq.1.and.iPressureGradient.eq.0) then
+      !    dux1(:,:,:,1)=dux1(:,:,:,1)+CoriolisFreq*(-UG(3))
+      !    duz1(:,:,:,1)=duz1(:,:,:,1)-CoriolisFreq*(-UG(1))
+      ! endif
+  
+      ! ! Coriolis terms
+      ! if (iCoriolis.eq.1) then
+      !    dux1(:,:,:,1)=dux1(:,:,:,1)+CoriolisFreq*uz1(:,:,:)
+      !    duz1(:,:,:,1)=duz1(:,:,:,1)-CoriolisFreq*ux1(:,:,:)
+      ! endif
+  
+      ! ! Damping zone
+      ! if (idamping.eq.1) then
+      !    call damping_zone(dux1,duy1,duz1,ux1,uy1,uz1)
+      ! endif
+  
+      ! !! Buoyancy terms
+      ! if (iscalar.eq.1.and.ibuoyancy.eq.1) then
+      !    duy1(:,:,:,1)=duy1(:,:,:,1)+gravv*phi1(:,:,:,1)/Tref
+      ! endif
+  
+      return
+    end subroutine momentum_forcing_tbl
   subroutine comp_thetad(ux1,uy1,thetad)
   USE MPI
   USE decomp_2d
@@ -517,7 +559,7 @@ end subroutine tbl_flrt
   real(mytype),dimension(ysize(2)) :: ux2m,ux2m_old,uxuy2pm
   real(mytype),dimension(ysize(2)) :: ydudy2m,dudy2m,du2dy22m,duxuy2pm
   real(mytype) :: resi,resi1,cf_ref,delta
-  real(mytype) :: theta,thetad
+  real(mytype) :: ttheta,thetad,theta1,theta2
   real(mytype) :: theta3,thetad1,thetad2,thetad3
   real(mytype) :: y,tau_wall,tau_wall1,ufric,temp,utau
   real(8)      :: tstart
@@ -531,9 +573,9 @@ end subroutine tbl_flrt
  
     call transpose_x_to_y(ux1,ux2)
     call horizontal_avrge(ux2,ux2m)
-    theta = sum((ux2m*(one-ux2m))*ypw)
+    ttheta = sum((ux2m*(one-ux2m))*ypw)
     delta = sum((one-ux2m)*ypw)
-    resi = theta - one
+    resi = ttheta - one
     ux2m_old = ux2m
  
     if(mod(itime,istheta).eq.0)then
@@ -643,7 +685,7 @@ end subroutine tbl_flrt
       print *,'dz+=',real(dz   *ufric*re,4),'<5'
      endif
      
-     print *,'theta,thetad=',theta,thetad
+     print *,'theta,thetad=',ttheta,thetad
      print *,'cf   ,utau  =',2*ufric**2,ufric
  
      FS = 2 ;write(fileformat, '( "(",I4,"(E14.6),A)" )' ) FS

@@ -119,7 +119,7 @@ SmagWallDamp = 0  ! Smagorinsky damping function for ABL if 1
 &Tripping
 !================
 itrip=0               !1 to activate the tripping for TBL, 0 otherwise for LBL 
-A_tr = 0.356625       !to be use with care, value is mesh-dependent
+A_tr =0       !to be use with care, value is mesh-dependent
 /End
 &CASE
 /End

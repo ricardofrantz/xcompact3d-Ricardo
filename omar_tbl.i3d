@@ -1,0 +1,179 @@
+! -*- mode: f90 -*-
+
+!===================
+&BasicParam
+!===================
+
+! Flow type (1=Lock-exchange, 2=TGV, 3=Channel, 4=Periodic hill, 5=Cylinder, 6=dbg-schemes, 9=Turbulent-Boundary-Layer)
+itype = 9
+! Domain decomposition
+p_row = 64               ! Row partition
+p_col = 32               ! Column partition
+
+! Mesh
+nx = 1537               ! X-direction nodes
+ny = 513                 ! Y-direction nodes
+nz = 128                 ! Z-direction nodes
+istret = 3            ! y mesh refinement (0:no, 1:center, 2:both sides, 3:bottom)
+beta = 1.4    ! Refinement parameter (beta)
+
+! Domain
+xlx = 750     ! Lx (Size of the box in x-direction)
+yly = 160.            ! Ly (Size of the box in y-direction)
+zlz = 30            ! Lz (Size of the box in z-direction)
+
+! Boundary conditions
+nclx1 = 2
+nclxn = 2
+ncly1 = 2
+nclyn = 2
+nclz1 = 0
+nclzn = 0
+
+! Flow parameters
+iin = 1               ! Inflow conditions (1: classic, 2: turbinit)
+re  = 1250. ! nu=1/re (Kinematic Viscosity)
+u1  = 1.              ! u1 (max velocity) (for inflow condition)
+u2  = 1.              ! u2 (min velocity) (for inflow condition)
+init_noise = 0.0  ! Turbulence intensity (1=100%) !! Initial condition
+inflow_noise = 0.0    ! Turbulence intensity (1=100%) !! Inflow condition
+
+! Time stepping
+dt =     0.0050000   !         Time      step      Active    only      if        iterCount=
+iterCount = 1       ! Style of counting the run time (1: Using time 2: use number of iterations,default).
+tfirst =  4000.0000000   !         Starting  time.     Active    only      if        iterCount=
+tlast  =  4000   ! Last time. Active only if iterCount=1
+ifirst =        800001   !         Read      initial   flow      field     ?
+ilast = 10       ! Last iteration. Active only if iterCount=2
+
+! Enable modelling tools
+ilesmod = 1            ! if 0 then DNS
+numscalar = 0         ! How many scalars? (Set to zero to disable scalars)
+iibm = 0                ! Flag for immersed boundary method
+
+/End
+
+!====================
+&NumOptions
+!====================
+
+! Spatial derivatives
+ifirstder = 4         ! (1->2nd central, 2->4th central, 3->4th compact, 4-> 6th compact)
+isecondder = 5        ! (1->2nd central, 2->4th central, 3->4th compact, 4-> 6th compact, 5->hyperviscous 6th)
+ipinter = 2           ! interpolation scheme (1: classic, 2: optimized, 3: optimized agressive)
+
+itimescheme = 7       ! Time integration scheme (1->Euler,2->AB2, 3->AB3, 4->AB4,5->RK3,6->RK4, 7->Semi-implicit)
+
+! Dissipation control
+nu0nu = 10.00             ! Ratio between hyperviscosity/viscosity at nu
+cnu = 0.351               ! Ratio between hypervisvosity at k_m=2/3pi and k_c= pi
+
+/End
+
+!=================
+&InOutParam
+!=================
+
+! Basic I/O
+irestart =             1   !         Read      initial   flow      field     ?
+icheckpoint = 200    ! Frequency for writing backup file
+ioutput = 200       ! Frequency for visualization
+nvisu = 1             ! Size for visualisation collection
+iresnamestyle = 1     ! 0: Use single restrt file, 1: name restart file based on the iteration number
+ibudget = 0           ! Save TKE bugdet (0: No, 1: yes)
+ivs = 130   ! Start of the subdomain of the visu. in x-dir (if not defined, the default is 1)
+ive = 900   ! End of the subdomain of the visu. in x-dir (if not defined, the default is nx)
+!jvs = 1   ! Start of the subdomain of the visu. in y-dir (if not defined, the default is 1)
+!jve = 513   ! End of the subdomain of the visu. in y-dir (if not defined, the default is ny)
+! kvs = 1   ! Start of the subdomain of the visu. in z-dir (if not defined, the default is 1)
+! kve = 32   ! End of the subdomain of the visu. in z-dir (if not defined, the default is nz)
+
+/End
+
+!=================
+&Statistics
+!=================
+
+wrotation = 0.12      ! rotation speed to trigger turbulence
+tspinup_time = 0    ! rotation time to trigger turbulence.  Active only if iterCount=1
+spinup_time = 0    ! number of time steps with a rotation to trigger turbulence. Active only if iterCount=2
+nstat = 1             ! Size arrays for statistic collection
+timeStat = 0.0      ! Time after which statistics are collected.  Active only if iterCount=1
+initstat = 40000      ! number of time steps after which statistics are collected. Active only if iterCount=2
+
+/End
+
+!########################
+! OPTIONAL PARAMETERS
+!#######################
+
+!================
+&ScalarParam
+!================
+
+Sc(1) = 1.0           ! Schmidt number
+
+nclxS1 = 2
+nclxSn = 2
+nclyS1 = 2
+nclySn = 1
+nclzS1 = 1
+nclzSn = 1
+
+/End
+
+!================
+&LESModel
+!================
+
+jles = 4              ! LES Model (1: Phys Smag, 2: Phys WALE, 3: Phys dyn. Smag, 4: iSVV, 5: dyn SEV, 6:ADM-RT, 7:Omar )
+smagcst = 0.14        ! Smagorinsky constant
+walecst = 0.5         ! WALES Model Coefficient
+X_rel   = 8.0         ! ADM-RT relaxation term
+iwall = 0             ! Enable wall modeling
+fltrcff = 0.28        ! ALPHA coefficient of the filtter
+
+nu0nu_1 = 0.0         ! The disspation mahnitude of the primary 2nd der. Used only if jles=7
+nu0nu_2 = 10.0         ! The disspation mahnitude of the secondary 2nd der. Used only if jles=7
+imodeSVV = 4          ! Only jles = 7: (0: Static SVV, 1: use strain rate, 2: use rotation rate, 3: use both strain rate and rotation rate)
+dSVVcst = 0.8        ! If jles = 7: scale the SGS calculated using Dynamic SVV model (OMAR). default dSVVcst = 0.0.
+/End
+
+!================
+&TurbulenceWallModel
+!================
+
+SmagWallDamp = 1      ! Smagorinsky damping function for ABL if 1
+
+/End
+
+!================
+&TrippingParam
+!================
+
+A_trip = 0.356625      ! Magnitude of the triping forces. A=0 => No tripping
+!xs_tr=1.402033       ! These params. have default values defined in parameters.f90,
+!ys_tr=0.350508       !but they still can be customize here.
+!ts_tr=1.402033
+!x0_tr=3.505082
+
+/End
+!================
+&WallBloingPram
+!================
+nx_Act= 1
+alpha_x= 1.0
+uyWallAmpl= 0.0   ! wall normal velocity ( x 100)
+xb1 = 76  ! the start of the blowing location
+xb2 = 161.   ! the end of the blowing location
+X_R = 4.0  ! the relaxation lenght where the blowing amplitude grows from 0 to Max.
+
+
+/End
+!================
+&RunningOptions
+!================
+MaxWallRunTime = 86400
+/End
+&CASE
+/End

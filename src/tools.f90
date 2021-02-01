@@ -891,7 +891,7 @@ subroutine stretching()
         if (istret==3) yetai(j)=(real(j,mytype)-half)*(half/nym)-half
         den1=sqrt(alpha*beta+one)
         xnum=den1/sqrt(alpha/pi)/sqrt(beta)/sqrt(pi)
-        den=2.*sqrt(alpha/pi)*sqrt(beta)*pi*sqrt(pi)
+        den=two*sqrt(alpha/pi)*sqrt(beta)*pi*sqrt(pi)
         den3=((sin(pi*yetai(j)))*(sin(pi*yetai(j)))/beta/pi)+alpha/pi
         den4=two*alpha*beta-cos(two*pi*yetai(j))+one
         xnum1=(atan(xnum*tan(pi*yetai(j))))*den4/den1/den3/den

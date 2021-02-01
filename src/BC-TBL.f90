@@ -1,35 +1,3 @@
-!################################################################################
-!This file is part of Xcompact3d.
-!
-!Xcompact3d
-!Copyright (c) 2012 Eric Lamballais and Sylvain Laizet
-!eric.lamballais@univ-poitiers.fr / sylvain.laizet@gmail.com
-!
-!    Xcompact3d is free software: you can redistribute it and/or modify
-!    it under the terms of the GNU General Public License as published by
-!    the Free Software Foundation.
-!
-!    Xcompact3d is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-!    GNU General Public License for more details.
-!
-!    You should have received a copy of the GNU General Public License
-!    along with the code.  If not, see <http://www.gnu.org/licenses/>.
-!-------------------------------------------------------------------------------
-!-------------------------------------------------------------------------------
-!    We kindly request that you cite Xcompact3d/Incompact3d in your
-!    publications and presentations. The following citations are suggested:
-!
-!    1-Laizet S. & Lamballais E., 2009, High-order compact schemes for
-!    incompressible flows: a simple and efficient method with the quasi-spectral
-!    accuracy, J. Comp. Phys.,  vol 228 (15), pp 5989-6015
-!
-!    2-Laizet S. & Li N., 2011, Incompact3d: a powerful tool to tackle turbulence
-!    problems with up to 0(10^5) computational cores, Int. J. of Numerical
-!    Methods in Fluids, vol 67 (11), pp 1735-1757
-!################################################################################
-
 module tbl
 
   USE decomp_2d
@@ -42,8 +10,14 @@ module tbl
   character(len=100) :: fileformat
   character(len=1),parameter :: NL=char(10) !new line character
 
+  real(mytype),save, allocatable, dimension(:) :: ttd1a,ttd1b,ttd1c
+  real(mytype),save, allocatable, dimension(:) :: ttd2a,ttd2b,ttd2c
+  real(mytype),save, allocatable, dimension(:) :: ttd3a,ttd3b,ttd3c
+
+
   PRIVATE ! All functions/subroutines private by default
   PUBLIC :: init_tbl, boundary_conditions_tbl, postprocess_tbl, tbl_flrt
+
 
 contains
 
@@ -67,6 +41,10 @@ contains
 
     integer, dimension (:), allocatable :: seed
 
+    allocate(ttd1a(ysize(2)),ttd1b(ysize(2)),ttd1c(ysize(2)))
+    allocate(ttd2a(ysize(2)),ttd2b(ysize(2)),ttd2c(ysize(2)))
+    allocate(ttd3a(ysize(2)),ttd3b(ysize(2)),ttd3c(ysize(2)))
+
     if (iscalar==1) then
 
        phi1(:,:,:,:) = 0.25 !change as much as you want
@@ -82,7 +60,8 @@ contains
     ux1=zero;uy1=zero;uz1=zero
 
     !a blasius profile is created in ecoule and then duplicated for the all domain
-    call blasius()
+    if(nclx1==2)call blasius !spatial framework
+    if(nclx1==0)call perturb_init_tbl(ux1,uy1,uz1) !temporal framework 
 
     do k=1,xsize(3)
        do j=1,xsize(2)
@@ -118,6 +97,8 @@ contains
     integer :: i, j, k, is
 
     !INFLOW with an update of bxx1, byy1 and bzz1 at the inlet
+
+    if (nclx1 == 2) THEN
 
     call blasius()
     !INLET FOR SCALAR, TO BE CONSISTENT WITH INITIAL CONDITION
@@ -157,6 +138,9 @@ contains
           enddo
     enddo
 
+   endif !if (nclx1 == 2)
+
+
     !! Bottom Boundary
     if (ncly1 == 2) THEN
       do k = 1, xsize(3)
@@ -176,11 +160,13 @@ contains
              byzn(i, k) = uz(i, xsize(2) - 1, k)
           enddo
        enddo
+    !update of the flow rate (what is coming in the domain is getting out)
+    call tbl_flrt(ux,uy,uz)
     endif
 
-    !SCALAR   
+    !SCALAR ! 
     if (itimescheme.ne.7) then
-    if (iscalar.ne.0) then
+     if (iscalar.ne.0) then
           if ((nclyS1.eq.2).and.(xstart(2).eq.1)) then
              !! Generate a hot patch on bottom boundary
              phi(1,1,:,:) = one
@@ -188,11 +174,8 @@ contains
           if ((nclySn.eq.2).and.(xend(2).eq.ny)) THEN
              phi(1,xsize(2),:,:) = phi(1,xsize(2)-1,:,:)
           endif
+     endif
     endif
-    endif
-
-    !update of the flow rate (what is coming in the domain is getting out)
-    call tbl_flrt(ux,uy,uz)
 
     return
   end subroutine boundary_conditions_tbl
@@ -425,49 +408,343 @@ end subroutine tbl_flrt
 
        !! Write vorticity as an example of post processing
     !x-derivatives
-    call derx (ta1,ux1,di1,sx,ffx,fsx,fwx,xsize(1),xsize(2),xsize(3),0)
-    call derx (tb1,uy1,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
-    call derx (tc1,uz1,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
+!    call derx (ta1,ux1,di1,sx,ffx,fsx,fwx,xsize(1),xsize(2),xsize(3),0)
+!    call derx (tb1,uy1,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
+!    call derx (tc1,uz1,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
     !y-derivatives
-    call transpose_x_to_y(ux1,td2)
-    call transpose_x_to_y(uy1,te2)
-    call transpose_x_to_y(uz1,tf2)
-    call dery (ta2,td2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
-    call dery (tb2,te2,di2,sy,ffy,fsy,fwy,ppy,ysize(1),ysize(2),ysize(3),0)
-    call dery (tc2,tf2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
+!    call transpose_x_to_y(ux1,td2)
+!    call transpose_x_to_y(uy1,te2)
+!    call transpose_x_to_y(uz1,tf2)
+!    call dery (ta2,td2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
+!    call dery (tb2,te2,di2,sy,ffy,fsy,fwy,ppy,ysize(1),ysize(2),ysize(3),0)
+!    call dery (tc2,tf2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
     !!z-derivatives
-    call transpose_y_to_z(td2,td3)
-    call transpose_y_to_z(te2,te3)
-    call transpose_y_to_z(tf2,tf3)
-    call derz (ta3,td3,di3,sz,ffzp,fszp,fwzp,zsize(1),zsize(2),zsize(3),1)
-    call derz (tb3,te3,di3,sz,ffzp,fszp,fwzp,zsize(1),zsize(2),zsize(3),1)
-    call derz (tc3,tf3,di3,sz,ffz,fsz,fwz,zsize(1),zsize(2),zsize(3),0)
+!    call transpose_y_to_z(td2,td3)
+!    call transpose_y_to_z(te2,te3)
+!    call transpose_y_to_z(tf2,tf3)
+!    call derz (ta3,td3,di3,sz,ffzp,fszp,fwzp,zsize(1),zsize(2),zsize(3),1)
+!    call derz (tb3,te3,di3,sz,ffzp,fszp,fwzp,zsize(1),zsize(2),zsize(3),1)
+!    call derz (tc3,tf3,di3,sz,ffz,fsz,fwz,zsize(1),zsize(2),zsize(3),0)
     !!all back to x-pencils
-    call transpose_z_to_y(ta3,td2)
-    call transpose_z_to_y(tb3,te2)
-    call transpose_z_to_y(tc3,tf2)
-    call transpose_y_to_x(td2,tg1)
-    call transpose_y_to_x(te2,th1)
-    call transpose_y_to_x(tf2,ti1)
-    call transpose_y_to_x(ta2,td1)
-    call transpose_y_to_x(tb2,te1)
-    call transpose_y_to_x(tc2,tf1)
+!    call transpose_z_to_y(ta3,td2)
+!    call transpose_z_to_y(tb3,te2)
+!    call transpose_z_to_y(tc3,tf2)
+!    call transpose_y_to_x(td2,tg1)
+!    call transpose_y_to_x(te2,th1)
+!    call transpose_y_to_x(tf2,ti1)
+!    call transpose_y_to_x(ta2,td1)
+!    call transpose_y_to_x(tb2,te1)
+!    call transpose_y_to_x(tc2,tf1)
     !du/dx=ta1 du/dy=td1 and du/dz=tg1
     !dv/dx=tb1 dv/dy=te1 and dv/dz=th1
     !dw/dx=tc1 dw/dy=tf1 and dw/dz=ti1
 
-    di1(:,:,:)=sqrt((tf1(:,:,:)-th1(:,:,:))**2+(tg1(:,:,:)-tc1(:,:,:))**2+&
-         (tb1(:,:,:)-td1(:,:,:))**2)
-    if (iibm==2) then
-       di1(:,:,:) = (one - ep1(:,:,:)) * di1(:,:,:)
-    endif
-    uvisu=0.
-    call fine_to_coarseV(1,di1,uvisu)
-994 format('vort',I3.3)
-    write(filename, 994) itime/ioutput
-    call decomp_2d_write_one(1,uvisu,filename,2)
+!    di1(:,:,:)=sqrt((tf1(:,:,:)-th1(:,:,:))**2+(tg1(:,:,:)-tc1(:,:,:))**2+&
+!         (tb1(:,:,:)-td1(:,:,:))**2)
+!    if (iibm==2) then
+!       di1(:,:,:) = (one - ep1(:,:,:)) * di1(:,:,:)
+!    endif
+!    uvisu=0.
+!    call fine_to_coarseV(1,di1,uvisu)
+!994 format('vort',I3.3)
+!    write(filename, 994) itime/ioutput
+!    call decomp_2d_write_one(1,uvisu,filename,2)
 
     return
   end subroutine postprocess_tbl
 
+  subroutine perturb_init_tbl(ta1,tb1,tc1)
+   USE decomp_2d
+   USE decomp_2d_io
+   USE variables
+   USE param
+   USE MPI
+   implicit none
+   real(mytype),dimension(xsize(1),xsize(2),xsize(3)) :: ta1,tb1,tc1
+   real(mytype) :: y,r,r3,x,z,h,aform
+   integer :: k,j,i,ijk,fh,ierror,ii,is,code
+   integer (kind=MPI_OFFSET_KIND) :: disp
+   real(mytype), dimension(ysize(2)) :: um
+   integer, dimension (:), allocatable :: seed
+
+  !call system_clock(count=code)
+   code=0 !fixing seed!
+   call random_seed(size = ii)
+   call random_seed(put = code+63946*nrank*(/ (i - 1, i = 1, ii) /))
+   call random_number(ta1)
+   call random_number(tb1)
+   call random_number(tc1)
+   
+   aform = 0.23369497_mytype
+   do k=1,xsize(3)
+      z=real((k+xstart(3)-1-1),mytype)*dz
+      do j=1,xsize(2)
+      if (istret.eq.0) y=(j+xstart(2)-1-1)*dy
+      if (istret.ne.0) y=yp(j+xstart(2)-1)
+      
+         um = (one-erf(aform*y))
+         do i=1,xsize(1)
+      
+         x=real(i-1,mytype)*dx
+         ta1(i,j,k)=init_noise*um(j)*(two*ta1(i,j,k)-one)+erf(y*aform)+&
+         4*init_noise*(y*exp(-y)/0.3678784468818499_mytype)*&
+         ( cos(z*pi/five)*cos(x*pi/five) + &
+            cos((x+((one+sqrt(five))*half))*pi/five)*cos((z+((one+sqrt(five))*half))*pi/five) )
+
+         tb1(i,j,k)=init_noise*um(j)*(two*tb1(i,j,k)-one)
+         tc1(i,j,k)=init_noise*um(j)*(two*tc1(i,j,k)-one)
+         enddo
+      enddo
+   enddo
+
+   return
+  end subroutine perturb_init_tbl
+    !############################################################################
+  subroutine comp_thetad(ux1,uy1,thetad)
+  USE MPI
+  USE decomp_2d
+  USE decomp_2d_io
+  ! USE var, only : umean,vmean,wmean,uumean,vvmean,wwmean,uvmean,uwmean,vwmean,tmean
+  ! USE var, only : uvisu
+  ! USE var, only : ta1,tb1,tc1,td1,te1,tf1,tg1,th1,ti1,di1
+  ! USE var, only : ta2,tb2,tc2,td2,te2,tf2,di2,ta3,tb3,tc3,td3,te3,tf3,di3
+  implicit none
+
+  integer  :: i,j,k,code,istheta
+  real(mytype),intent(in),dimension(xsize(1),xsize(2),xsize(3)) :: ux1,uy1
+  real(mytype),dimension(ysize(1),ysize(2),ysize(3)) :: ux2,uy2
+  real(mytype),dimension(ysize(1),ysize(2),ysize(3)) :: ux2p,dudy2,di2
+  real(mytype),dimension(ysize(2)) :: ux2m,ux2m_old,uxuy2pm
+  real(mytype),dimension(ysize(2)) :: ydudy2m,dudy2m,du2dy22m,duxuy2pm
+  real(mytype) :: resi,resi1,cf_ref,delta
+  real(mytype) :: theta,thetad
+  real(mytype) :: theta3,thetad1,thetad2,thetad3
+  real(mytype) :: y,tau_wall,tau_wall1,ufric,temp,utau
+  real(8)      :: tstart
+  tstart=MPI_WTIME()
+  istheta = 10
+ 
+    if(itime.eq.ifirst)then
+     if(nrank.eq.0)print *,'first dy=',yp(2)
+     thetad=zero
+    endif
+ 
+    call transpose_x_to_y(ux1,ux2)
+    call horizontal_avrge(ux2,ux2m)
+    theta = sum((ux2m*(one-ux2m))*ypw)
+    delta = sum((one-ux2m)*ypw)
+    resi = theta - one
+    ux2m_old = ux2m
+ 
+    if(mod(itime,istheta).eq.0)then
+    call extract_fluctuat(ux2,ux2m,ux2p) ! ux'
+    call transpose_x_to_y(uy1,uy2)
+    call horizontal_avrge(ux2p*uy2,uxuy2pm) ! ux'uy' in profile
+    call dery  (duxuy2pm,uxuy2pm ,di2,sy,ffy ,fsy ,fwy ,ppy  ,1,ysize(2),1,0) !0*1=0 
+    call dery  (dudy2m  ,ux2m    ,di2,sy,ffyp,fsyp,fwyp,ppy  ,1,ysize(2),1,1)
+    call dery  (ydudy2m ,ux2m*yp ,di2,sy,ffyp,fsyp,fwyp,ppy  ,1,ysize(2),1,1)
+    !ydudy2m = ydudy2m - ux2m !ydudy = (duydy+u) - u = ydudy
+    call deryy (du2dy22m,ux2m    ,di2,sy,sfyp,ssyp,swyp      ,1,ysize(2),1,1)
+    if (istret.ne.0) then!correct the second derivative
+     do j = 1,ysize(2)
+      du2dy22m(j) = du2dy22m(j)*pp2y(j)-pp4y(j)*dudy2m(j)
+     enddo
+    endif
+
+    !DEBUGGGGGGGGGGGGGGGGGGGGG
+    !call outpdt(ux2m    ,'ux2m')
+    !call outpdt(dudy2m  ,'dudy2m')
+    !call outpdt(du2dy22m,'du2dy22m')
+    !call outpdt(duxuy2pm,'duxuy2pm')
+    !ux2m(:) = ux2m_old(:)+dt*(thetad1*yp(:)*dudy2m(:)+xnu*du2dy22m(:)-duxuy2pm(:))
+    !theta1 = sum((ux2m*(one-ux2m))*ypw)
+    !call outpdt(ux2m    ,'ux2m_theta1')
+    !ux2m(:) = ux2m_old(:)+dt*(thetad2*yp(:)*dudy2m(:)+xnu*du2dy22m(:)-duxuy2pm(:))
+    !theta2 = sum((ux2m*(one-ux2m))*ypw)
+    !call outpdt(ux2m    ,'ux2m_theta2')
+ 
+    if(itime.gt.ifirst+3)then !skipping Euler and AB2
+     !if(mod(itime,3)==0)then
+      if(nrank.eq.0)then
+ 
+      !target 1.4e-3
+      i=0;
+ 
+      !if(thetad.eq.zero)then
+       thetad1=1.0e-6
+       thetad2=1.0e-1
+      !else
+      ! thetad1=thetad -istheta*dt
+      ! if(thetad1.lt.zero)thetad1=zero
+      ! thetad2=thetad +istheta*dt
+      !endif     
+ 
+      do while(abs(resi).gt.1.e-11)
+      i=i+1!;theta1=zero;theta2=zero;theta3=zero
+ 
+      if(i.gt.50)then
+       print *,'exiting after 50',theta3,thetad3
+       exit
+      endif
+ 
+ !phi1(ijk,1,1,is)=phi1(ijk,1,1,is)+adt(itr)*ta1(ijk,1,1)+bdt(itr)*phis1(ijk,1,1,is)+cdt(itr)*phiss1(ijk,1,1,is)
+ !phiss1(ijk,1,1,is)=phis1(ijk,1,1,is)
+ !phis1(ijk,1,1,is)=ta1(ijk,1,1)
+ 
+    ttd1a(:) = thetad1*ydudy2m(:)+xnu*du2dy22m(:)-duxuy2pm(:)
+    ux2m(:) = ux2m_old(:)+adt(1)*ttd1a(:)+bdt(1)*ttd1b(:)+cdt(1)*ttd1c(:)
+    theta1 = sum((ux2m*(one-ux2m))*ypw)
+ 
+    ttd2a(:) = thetad2*ydudy2m(:)+xnu*du2dy22m(:)-duxuy2pm(:)
+    ux2m(:) = ux2m_old(:)+adt(1)*ttd2a(:)+bdt(1)*ttd2b(:)+cdt(1)*ttd2c(:)
+    theta2 = sum((ux2m*(one-ux2m))*ypw)
+ 
+    thetad3=half*(thetad1+thetad2)
+    ttd3a(:) = thetad3*ydudy2m(:)+xnu*du2dy22m(:)-duxuy2pm(:)
+    ux2m(:) = ux2m_old(:)+adt(1)*ttd3a(:)+bdt(1)*ttd3b(:)+cdt(1)*ttd3c(:)
+    theta3 = sum((ux2m*(one-ux2m))*ypw)
+ 
+    if( (theta1-one)*(theta3-one) .lt. zero)then
+     thetad2 = thetad3
+    else
+     thetad1 = thetad3
+    endif
+ 
+    resi=theta1-one
+    end do
+ 
+    if(abs(theta1-one).lt.1.e-11)then
+     print *,'Converged after ',i
+     thetad=thetad3
+    endif
+ 
+     print *,'Time computing theta dot (s)', real(MPI_WTIME()-tstart,4)   ! USE var, only : umean,vmean,wmean,uumean,vvmean,wwmean,uvmean,uwmean,vwmean,tmean
+
+     endif !nrank.eq.0
+     call MPI_BCAST(thetad,1,real_type,0,MPI_COMM_WORLD,code)
+     endif !Euler + AB2 skip
+     endif !mod
+ 
+   ttd1c(:)=ttd1b(:);ttd1b(:)=ttd1a(:)
+   ttd2c(:)=ttd2b(:);ttd2b(:)=ttd2a(:)
+   ttd3c(:)=ttd3b(:);ttd3b(:)=ttd3a(:)
+ 
+   call dery(dudy2,ux2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
+   !call dery(dwdy2,uz2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
+   temp = sum(dudy2(:,1,:))!**2+dwdy2(:,1,:)**2)
+   call MPI_ALLREDUCE(temp,tau_wall1,1,real_type,MPI_SUM,MPI_COMM_WORLD,code)
+   tau_wall=tau_wall1/real(nx*nz,mytype)
+   ufric=sqrt(tau_wall*xnu)
+ 
+   if (nrank .eq. 0) then
+     if(mod(itime,itest)==0)then
+      print *,'dx+=',real(dx   *ufric*re,4),'<8'
+      print *,'dy+=',real(yp(2)*ufric*re,4),'<1'
+      print *,'dz+=',real(dz   *ufric*re,4),'<5'
+     endif
+     
+     print *,'theta,thetad=',theta,thetad
+     print *,'cf   ,utau  =',2*ufric**2,ufric
+ 
+     FS = 2 ;write(fileformat, '( "(",I4,"(E14.6),A)" )' ) FS
+     FS = FS*14+1  !Line width
+     open(67,file='s_utau',status='unknown',form='formatted',access='direct',recl=FS)
+     write(67,fileformat,rec=itime+1) t,ufric,NL ;close(67)
+ 
+     open(67,file='s_thetad',status='unknown',form='formatted',access='direct',recl=FS)
+     write(67,fileformat,rec=itime+1) t,thetad,NL ;close(67)
+ 
+     open(67,file='s_delta',status='unknown',form='formatted',access='direct',recl=FS)
+     write(67,fileformat,rec=itime+1) t,delta,NL ;close(67)
+ 
+     if(itime.eq.ifirst) then
+      write(fileformat, '( "(",I4,"(E16.8),A)" )' ) ny
+      open(67,file='./out/00_yp',status='unknown',form='formatted',access='direct',recl=(ny*16+1))
+      write(67,fileformat,rec=1) yp(:) ;close(67)
+     endif
+ 
+   endif
+   return
+   end
+   !############################################################################
+  !############################################################################
+   subroutine outp(field,filename) !outpost to disk buffered quantities
+      USE param
+      USE variables
+      implicit none
+      real(mytype),intent(IN),dimension(ysize(2),iprocessing) :: field
+      character(len=*), intent(IN) :: filename
+      integer :: i
+      character(len=1),parameter :: NL=char(10)
+      character(len=300) :: fileformat
+      write(fileformat, '( "(",I4,"(E16.8),A)" )' ) ny
+      open(67,file=trim(filename),status='unknown',form='formatted',access='direct',recl=(ny*16+1))
+      do i=1, iprocessing/itest
+      !if(nrank.eq.0)print *, 'itime/itest=',itime/itest-iprocessing/itest+i
+        write(67,fileformat,rec=(itime-initstat)/itest -iprocessing/itest + i) field(:,i),NL
+      enddo
+      close(67)
+    end subroutine outp
+    !############################################################################
+    subroutine outpdt(field,filename)
+      USE param
+      USE variables
+      implicit none
+      real(mytype),intent(IN),dimension(ysize(2)) :: field
+      character(len=*), intent(IN) :: filename
+      integer :: i
+      character(len=1),parameter :: NL=char(10)
+      character(len=300) :: fileformat
+      write(fileformat, '( "(",I4,"(E16.8),A)" )' ) ny
+      open(67,file=trim(filename),status='unknown',form='formatted',access='direct',recl=(ny*16+1))
+      write(67,fileformat,rec=itime) field,NL
+      close(67)
+    end subroutine outpdt
+    !############################################################################
+    subroutine outpd(field,filename) !outpost to disk just computed
+      USE param
+      USE variables
+      implicit none
+      real(mytype),intent(IN),dimension(ysize(2)) :: field
+      character(len=*), intent(IN) :: filename
+      integer :: i
+      character(len=1),parameter :: NL=char(10)
+      character(len=300) :: fileformat
+      write(fileformat, '( "(",I4,"(E16.8),A)" )' ) ny
+      open(67,file=trim(filename),status='unknown',form='formatted',access='direct',recl=(ny*16+1))
+      write(67,fileformat,rec=(itime-initstat)/iprocessing) field,NL
+      close(67)
+    end subroutine outpd
+    !############################################################################
+    subroutine horizontal_avrge(field2,profile)
+      USE param
+      USE variables
+      USE MPI
+      implicit none
+      real(mytype),intent(in),dimension(ysize(1),ysize(2),ysize(3)) :: field2
+      real(mytype),dimension(ysize(2)) :: sxz, sxz1
+      real(mytype),intent(out),dimension(ysize(2)) :: profile
+      integer :: j,code
+      sxz=zero
+      do j=1,ysize(2)
+        sxz(j) = sum(field2(:,j,:))
+      enddo
+      call MPI_ALLREDUCE(sxz,sxz1,ny,real_type,MPI_SUM,MPI_COMM_WORLD,code)
+      profile = sxz1/real(nx*nz,mytype)
+    end subroutine horizontal_avrge
+    !############################################################################
+    subroutine extract_fluctuat(field2,profile,field2p)
+      USE param
+      USE variables
+      USE MPI
+      implicit none
+      real(mytype),intent(in),dimension(ysize(1),ysize(2),ysize(3)) :: field2
+      real(mytype),intent(in),dimension(ysize(2)) :: profile
+      real(mytype),intent(out),dimension(ysize(1),ysize(2),ysize(3)) :: field2p
+      integer :: j
+      do j=1,ysize(2)
+        field2p(:,j,:) = field2(:,j,:) - profile(j)
+      enddo
+    end subroutine extract_fluctuat
+    !############################################################################
 end module tbl

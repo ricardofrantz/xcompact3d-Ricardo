@@ -1,0 +1,33 @@
+#
+# INCOMPACT 3D parameters: Self similar TBL in temporal approach
+#
+2       # p_row
+2      # p_col
+#
+129     # nx
+129     # ny
+32     # nz
+50     # xlx       # Lx (Adimensional size in x-direction)
+20.     # yly       # Ly (Adimensional size in y-direction)
+5.     # zlz       # Lz (Adimensional size in x-direction)
+200.    # Re_theta  # Reynolds number theta
+0       # iscalar    # 0:off, 1:on
+0.      # Ri for stratification
+0.050  # noise initial condition sqrt(max(tke))
+0.0050 #65 for 400 # dt        # Time step
+# Code controls
+0       # iturb         # Partial restart (0:no, 1:yes)
+1       # ilit         # Full    restart (0:no, 1:yes)
+150001       # ifirst       # First iteration
+350000  # ilast        # Last iteration
+150000  # istatsig     # Ignore iterations for start computing stats
+50000   # isave        # Frequency for writing backup file (sauve.dat)
+2000    # imodulo      # Frequency for visualization for VISU_INSTA
+20      # iprocessing  # Frequency in-situ processing
+50      # itest        # Frequency for testing fields
+20      # iskips       # Skip statistics computation
+0       # ifprobes     # Probes skip, 0 to off
+3       # istheta
+0.7    # beta, stretcing factor
+0       # 0 for dns, 1 for iles
+4.      # nu_0/nu -> 4 for dns, >4 for iles

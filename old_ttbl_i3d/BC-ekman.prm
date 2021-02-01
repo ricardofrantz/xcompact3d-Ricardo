@@ -1,0 +1,34 @@
+#
+# INCOMPACT 3D parameters: Turbulent Ekman flow
+#
+36       # p_row
+64       # p_col
+#
+1024    # nx,nz
+193     # ny
+135.    # xlx,zlz   # Lx (Adimensional size in x-direction)
+57.     # yly       # Ly (Adimensional size in y-direction)
+500.    # Re        # Reynolds number
+250.    # Ro        # Rossby number (Corriolis effect)
+0.12    # sqrt(max(tke)) = sqrt(0.0143) 0.05*free strem - for laminar Ek. #noise
+0.004   # dt        # Time step
+4.      # fpi2      # Numerical dissipation
+# Temperatura
+1       # iscalar    # 0:off, 1:on
+0       # reset_scalar 
+0.002   # Ri_b    # Richardson bulk                         [ri_b(1)]
+1.      # Prandtl number                                    [nsc(1)]
+40.     # zdamp
+# Code controls
+1       # ilit         # Read initial flow field? (0:no, 1:yes)
+40001   # ifirst     # First iteration
+200000  # ilast      # Last iteration
+20000   # isave        # Frequency for writing backup file (sauve.dat)
+5000    # imodulo      # Frequency for visualization for VISU_INSTA
+500     # iprocessing  # Frequency in-situ processing
+10      # itest        # Frequency for testing fields
+2       # ifprobes
+#0.002
+#0.01
+#0.02
+#0.04

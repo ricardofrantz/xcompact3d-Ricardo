@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH --nodes=48                     #Numero de Nós
+#SBATCH --ntasks=1152                   #Numero total de tarefas MPI
+#SBATCH --ntasks-per-node=24           #Numero de tarefas por Nó
+#SBATCH -p cpu                         #Fila (partition) a ser utilizada
+#SBATCH --time=48:00:00		       #Altera o tempo limite para 48 horas
+#SBATCH --exclusive                    #Utilização exclusiva dos nós durante a execução do job
+#SBATCH --mail-user=rasfrantz@gmail.com
+#SBATCH --mail-type=ALL
+#SBATCH -J S500_1
+
+nodeset -e $SLURM_JOB_NODELIST
+cd $SLURM_SUBMIT_DIR
+
+source /scratch/app/modulos/intel-psxe-2019.sh
+
+ulimit -s unlimited
+ulimit -c unlimited
+
+#export I_MPI_PMI_LIBRARY=/usr/lib64/libpmi.so
+#export I_MPI_SHM_LMT=shm
+#export I_MPI_EXTRA_FILE_SYSTEM=on
+#export I_MPI_EXTRA_FILE_SYSTEM_LIST=lustre
+
+srun -n $SLURM_NTASKS ./incompact3d >>logout 2>&1

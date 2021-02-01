@@ -397,7 +397,7 @@ contains
     allocate(ppy(ny),pp2y(ny),pp4y(ny))
     allocate(ppyi(ny),pp2yi(ny),pp4yi(ny))
     allocate(xp(nx),xpi(nx))
-    allocate(yp(ny),ypi(ny),del(ny))
+    allocate(yp(ny),ypi(ny),del(ny),ypw(ny))
     allocate(zp(nz),zpi(nz))
     allocate(yeta(ny),yetai(ny))
 
@@ -414,6 +414,17 @@ contains
        enddo
     else
        call stretching()
+       
+       ypw(:)=zero ! compute integral weights for stretched mesh - Ricardo Frantz
+       do j=1,ny
+        if    (j==1)then
+        ypw(j) = (yp(j+1)-yp(j))*half
+        elseif(j==ny)then
+        ypw(j) = (yp(j)-yp(j-1))*half
+        else
+        ypw(j) = (yp(j+1)-yp(j-1))*half
+       endif
+       enddo
 
        allocate(dyp(ny))
        ! compute dy for stretched mesh - Kay

@@ -185,6 +185,7 @@ contains
        if (nrank==0) then
           write(*,"(' Remaining time:',I8,' h ',I2,' min')") int(tremaining), int((tremaining-int(tremaining))*sixty)
           write(*,"(' Elapsed time:  ',I8,' h ',I2,' min')") int(telapsed), int((telapsed-int(telapsed))*sixty)
+          write(*,*) 'Snapshot current/final ',int(itr/ioutput),int(ilast/ioutput)
        endif
     else if (iwhen.eq.4) then !AT THE END OF THE SIMULATION
        call cpu_time(trank); ttotal=trank-tstart

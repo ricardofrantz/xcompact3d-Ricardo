@@ -5,7 +5,7 @@
 itype = 9
 ! Domain decomposition
 p_row=2               ! Row partition
-p_col=3               ! Column partition
+p_col=2              ! Column partition
 ! Mesh
 nx=108                ! X-direction nodes
 ny=109                ! Y-direction nodes

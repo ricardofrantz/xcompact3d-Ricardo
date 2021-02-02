@@ -13,7 +13,7 @@ DEFS = -DDOUBLE_PREC -DVERSION=\"$(GIT_VERSION)\"
 LCL = local# local,lad,sdu,archer
 IVER = 17# 15,16,17,18
 CMP = intel# intel,gcc
-FFT = mkl# generic,fftw3,mkl
+FFT = generic# generic,fftw3,mkl
 
 #######CMP settings###########
 ifeq ($(CMP),intel)

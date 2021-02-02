@@ -515,7 +515,7 @@ contains
 
     endif
 
-    if (itype.eq.itype_tbl) call tbl_flrt(ux,uy,uz)
+    if (itype.eq.itype_tbl .and. nclx.ne.0) call tbl_flrt(ux,uy,uz)
 
     if (nclx1==2) then
        do k=1,xsize(3)

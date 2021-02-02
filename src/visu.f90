@@ -71,24 +71,24 @@ contains
       end if
       inquire(file="data/3d_snapshots", exist=dir_exists)
       if (.not.dir_exists) then
-         call system("mkdir 3d_snapshots 2> /dev/null")
+         call system("mkdir data/3d_snapshots 2> /dev/null")
       end if
       inquire(file="data/xy_planes", exist=dir_exists)
       if (.not.dir_exists) then
-         call system("mkdir xy_planes 2> /dev/null")
+         call system("mkdir data/xy_planes 2> /dev/null")
       end if
       inquire(file="data/xz_planes", exist=dir_exists)
       if (.not.dir_exists) then
-         call system("mkdir xz_planes 2> /dev/null")
+         call system("mkdir data/xz_planes 2> /dev/null")
       end if
       inquire(file="data/yz_planes", exist=dir_exists)
       if (.not.dir_exists) then
-         call system("mkdir yz_planes 2> /dev/null")
+         call system("mkdir data/yz_planes 2> /dev/null")
       end if
       if (ixdmf) then
         inquire(file="data/xdmf", exist=dir_exists)
         if (.not.dir_exists) then
-           call system("mkdir xdmf 2> /dev/null")
+           call system("mkdir data/xdmf 2> /dev/null")
         end if
       endif
     end if
@@ -175,7 +175,9 @@ contains
     !###################################################################
     if (nrank.eq.0) then
       call cpu_time(tstart)
+      print *
       print *,'Writing snapshots =>',itime/ioutput
+      print *
     end if
     !
     if (filenamedigits .eq. 0) then
@@ -190,8 +192,7 @@ contains
     endif
     !
     io = 67
-    !call write_xdmf_header(io, num, './data/xdmf/3d_snapshots', nx, ny, nz)
-    call write_xdmf_header(io, num, './xdmf/3d_snapshots', nx, ny, nz)
+    call write_xdmf_header(io, num, './data/xdmf/3d_snapshots', nx, ny, nz)
     !###################################################################
     !! Write velocity
     !###################################################################
@@ -239,7 +240,7 @@ contains
       write(fmt3,'("(A,F16.4)")')
       write(fmt4,'("(A,F16.12)")')
       if (nrank==0) then
-         write(filename,"('./snap',I7.7,'.ini')") itime/ioutput
+         write(filename,"('./data/snap',I7.7,'.ini')") itime/ioutput
          !
          write(fmt2,'("(A,I16)")')
          write(fmt3,'("(A,F16.4)")')
@@ -276,7 +277,7 @@ contains
     !! DESCRIPTION: Writes the header of the xdmf file, for data visualization
     !############################################################################
     use variables, only : nvisu, prec, yp
-    use param, only : dx,dy,dz,istret
+    use param, only : dx,dy,dz,istret,dt,ioutput
     USE decomp_2d, only : mytype, nrank
 
     implicit none
@@ -332,6 +333,16 @@ contains
         WRITE(io,*)'        </DataItem>'
         WRITE(io,*)'    </Geometry>'
       endif
+    
+     WRITE(io,'(/)')
+     WRITE(io,*)'    <Grid Name="TimeSeries" GridType="Collection" CollectionType="Temporal">'
+     WRITE(io,*)'        <Time TimeType="HyperSlab">'
+     WRITE(io,*)'            <DataItem Format="XML" NumberType="Float" Dimensions="3">'
+     WRITE(io,*)'            <!--Start, Stride, Count-->'
+     WRITE(io,*)'            0.0',REAL(ioutput*dt,4)
+     WRITE(io,*)'            </DataItem>'
+     WRITE(io,*)'        </Time>'
+
       WRITE(io,*)'    <Grid Name="'//trim(num)//'" GridType="Uniform">'
       WRITE(io,*)'        <Topology Reference="/Xdmf/Domain/Topology[1]"/>'
       WRITE(io,*)'        <Geometry Reference="/Xdmf/Domain/Geometry[1]"/>'
@@ -391,7 +402,7 @@ contains
         write(io,*)'           <DataItem Format="Binary"'
         write(io,*)'            DataType="Float" Precision="'//CHAR(48+prec)//'" Endian="little" Seek="0"'
         write(io,*)'            Dimensions="',nz,ny,nx,'">'
-        write(io,*)'              ./3d_snapshots/'//filename//'-'//trim(num)//'.bin'
+        write(io,*)'              ../3d_snapshots/'//filename//'-'//trim(num)//'.bin'
         write(io,*)'           </DataItem>'
         write(io,*)'        </Attribute>'
       endif
@@ -403,7 +414,7 @@ contains
     !
     call fine_to_coarseV(1,ta1,uvisu)
     !
-    call decomp_2d_write_one(1,uvisu,'./3d_snapshots/'//filename//'-'//trim(num)//'.bin')
+    call decomp_2d_write_one(1,uvisu,'./data/3d_snapshots/'//filename//'-'//trim(num)//'.bin')
 
   end subroutine write_field
   !############################################################################

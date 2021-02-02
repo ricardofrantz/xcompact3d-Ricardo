@@ -14,9 +14,8 @@ module tbl
   real(mytype),save, allocatable, dimension(:) :: ttd2a,ttd2b,ttd2c
   real(mytype),save, allocatable, dimension(:) :: ttd3a,ttd3b,ttd3c
 
-
   PRIVATE ! All functions/subroutines private by default
-  PUBLIC :: init_tbl, boundary_conditions_tbl, postprocess_tbl, tbl_flrt, momentum_forcing_tbl
+  PUBLIC :: init_tbl, boundary_conditions_tbl,postprocess_tbl,tbl_flrt,momentum_forcing_tbl 
 
 
 contains
@@ -34,34 +33,67 @@ contains
     real(mytype),dimension(xsize(1),xsize(2),xsize(3)) :: ux1,uy1,uz1,ep1
     real(mytype),dimension(xsize(1),xsize(2),xsize(3),numscalar) :: phi1
 
-    real(mytype) :: y,r,um,r3,x,z,h,ct
+    real(mytype) :: y,r,r3,x,z,h,ct
     real(mytype) :: cx0,cy0,cz0,hg,lg
     integer :: k,j,i,fh,ierror,ii,is,it,code
     integer (kind=MPI_OFFSET_KIND) :: disp
-
     integer, dimension (:), allocatable :: seed
 
+    real(mytype) :: aform
+    real(mytype), dimension(ysize(2)) :: um
     allocate(ttd1a(ysize(2)),ttd1b(ysize(2)),ttd1c(ysize(2)))
     allocate(ttd2a(ysize(2)),ttd2b(ysize(2)),ttd2c(ysize(2)))
     allocate(ttd3a(ysize(2)),ttd3b(ysize(2)),ttd3c(ysize(2)))
 
-    if (iscalar==1) then
+    ! if (iscalar==1) then
 
-       phi1(:,:,:,:) = 0.25 !change as much as you want
-          if ((nclyS1.eq.2).and.(xstart(2).eq.1)) then
-             !! Generate a hot patch on bottom boundary
-             phi1(:,1,:,:) = one
-          endif
-          if ((nclySn.eq.2).and.(xend(2).eq.ny)) THEN
-             phi1(:,xsize(2),:,:) = 0.25
-          endif
+    !    phi1(:,:,:,:) = 0.25 !change as much as you want
+    !       if ((nclyS1.eq.2).and.(xstart(2).eq.1)) then
+    !          !! Generate a hot patch on bottom boundary
+    !          phi1(:,1,:,:) = one
+    !       endif
+    !       if ((nclySn.eq.2).and.(xend(2).eq.ny)) THEN
+    !          phi1(:,xsize(2),:,:) = 0.25
+    !       endif
 
-    endif
-    ux1=zero;uy1=zero;uz1=zero
+    ! endif
+    ! ux1=zero;uy1=zero;uz1=zero
 
-    !a blasius profile is created in ecoule and then duplicated for the all domain
-    if(nclx1==2)call blasius !spatial framework
-    if(nclx1==0)call perturb_init_tbl(ux1,uy1,uz1) !temporal framework 
+    ! !a blasius profile is created in ecoule and then duplicated for the all domain
+    ! if(nclx1==2)call blasius !spatial framework
+
+    if(nclx1==0)then !temporal framework 
+      !call system_clock(count=code)
+      code=0 !fixing seed!
+      call random_seed(size = ii)
+      call random_seed(put = code+63946*nrank*(/ (i - 1, i = 1, ii) /))
+      call random_number(ux1)
+      call random_number(uy1)
+      call random_number(uz1)
+
+      aform = 0.23369497_mytype
+      if(nrank.eq.0)write(*,*)'INITIAL CONDITION WITH GOLDEN RATION',aform,init_noise
+      do k=1,xsize(3)
+          z=real((k+xstart(3)-1-1),mytype)*dz
+          do j=1,xsize(2)
+          if (istret.eq.0) y=(j+xstart(2)-1-1)*dy
+          if (istret.ne.0) y=yp(j+xstart(2)-1)
+          
+            um = (one-erf(aform*y))
+            do i=1,xsize(1)
+          
+            x=real(i-1,mytype)*dx
+            ux1(i,j,k)=init_noise*um(j)*(two*ux1(i,j,k)-one)+erf(y*aform)+&
+            4*init_noise*(y*exp(-y)/0.3678784468818499_mytype)*&
+            ( cos(z*pi/five)*cos(x*pi/five) + &
+                cos((x+((one+sqrt(five))*half))*pi/five)*cos((z+((one+sqrt(five))*half))*pi/five) )
+
+            uy1(i,j,k)=init_noise*um(j)*(two*uy1(i,j,k)-one)
+            uz1(i,j,k)=init_noise*um(j)*(two*uz1(i,j,k)-one)
+            enddo
+          enddo
+      enddo
+      endif !if(nclx1==0)then
 
     do k=1,xsize(3)
        do j=1,xsize(2)
@@ -151,6 +183,7 @@ contains
         enddo
       enddo
     endif
+
     !! Top Boundary
     if (nclyn == 2) then
        do k = 1, xsize(3)
@@ -161,32 +194,26 @@ contains
           enddo
        enddo
     !update of the flow rate (what is coming in the domain is getting out)
-    call tbl_flrt(ux,uy,uz)
+    !call tbl_flrt(ux,uy,uz)
     endif
 
     !SCALAR ! 
     if (itimescheme.ne.7) then
-     if (iscalar.ne.0) then
-          if ((nclyS1.eq.2).and.(xstart(2).eq.1)) then
-             !! Generate a hot patch on bottom boundary
-             phi(1,1,:,:) = one
-          endif
-          if ((nclySn.eq.2).and.(xend(2).eq.ny)) THEN
-             phi(1,xsize(2),:,:) = phi(1,xsize(2)-1,:,:)
-          endif
-     endif
+    if (iscalar.ne.0) then
+         if ((nclyS1.eq.2).and.(xstart(2).eq.1)) then
+            !! Generate a hot patch on bottom boundary
+            phi(1,1,:,:) = one
+         endif
+         if ((nclySn.eq.2).and.(xend(2).eq.ny)) THEN
+            phi(1,xsize(2),:,:) = phi(1,xsize(2)-1,:,:)
+         endif
+    endif
     endif
 
     return
   end subroutine boundary_conditions_tbl
-
   !********************************************************************
-
-  !********************************************************************
-!
-subroutine tbl_flrt (ux1,uy1,uz1)
-  !
-  !********************************************************************
+  subroutine tbl_flrt (ux1,uy1,uz1)
 
   USE decomp_2d
   USE decomp_2d_poisson
@@ -250,7 +277,7 @@ subroutine tbl_flrt (ux1,uy1,uz1)
   udif=(utt1-utt2+utt3-utt4)/yly
   if (nrank==0 .and. mod(itime,1)==0) then
     write(*,"(' Mass balance: L-BC, R-BC,',2f12.6)") utt1,utt2
-    write(*,"(' Mass balance: B-BC, T-BC, Crr-Vel',3f11.5)") utt3,utt4,udif
+    !write(*,"(' Mass balance: B-BC, T-BC, Crr-Vel',3f11.5)") utt3,utt4,udif
   endif
   ! do k=1,xsize(3)
   !   do j=1,xsize(2)
@@ -266,17 +293,14 @@ subroutine tbl_flrt (ux1,uy1,uz1)
 
   return
 end subroutine tbl_flrt
-
 !********************************************************************
-  subroutine blasius()
-
+subroutine blasius
 
     USE decomp_2d
     USE decomp_2d_io
     USE variables
     USE param
     USE MPI
-
     implicit none
 
     real(mytype) :: eta_bl, f_bl, g_bl, x_bl,h_bl
@@ -391,7 +415,6 @@ end subroutine tbl_flrt
 
     return
   end subroutine blasius
-
   !############################################################################
   subroutine postprocess_tbl(ux1,uy1,uz1,ep1) !By Felipe Schuch
 
@@ -406,103 +429,54 @@ end subroutine tbl_flrt
     real(mytype),intent(in),dimension(xsize(1),xsize(2),xsize(3)) :: ux1, uy1, uz1, ep1
     character(len=30) :: filename
 
-       !! Write vorticity as an example of post processing
-    !x-derivatives
-!    call derx (ta1,ux1,di1,sx,ffx,fsx,fwx,xsize(1),xsize(2),xsize(3),0)
-!    call derx (tb1,uy1,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
-!    call derx (tc1,uz1,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
-    !y-derivatives
-!    call transpose_x_to_y(ux1,td2)
-!    call transpose_x_to_y(uy1,te2)
-!    call transpose_x_to_y(uz1,tf2)
-!    call dery (ta2,td2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
-!    call dery (tb2,te2,di2,sy,ffy,fsy,fwy,ppy,ysize(1),ysize(2),ysize(3),0)
-!    call dery (tc2,tf2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
-    !!z-derivatives
-!    call transpose_y_to_z(td2,td3)
-!    call transpose_y_to_z(te2,te3)
-!    call transpose_y_to_z(tf2,tf3)
-!    call derz (ta3,td3,di3,sz,ffzp,fszp,fwzp,zsize(1),zsize(2),zsize(3),1)
-!    call derz (tb3,te3,di3,sz,ffzp,fszp,fwzp,zsize(1),zsize(2),zsize(3),1)
-!    call derz (tc3,tf3,di3,sz,ffz,fsz,fwz,zsize(1),zsize(2),zsize(3),0)
-    !!all back to x-pencils
-!    call transpose_z_to_y(ta3,td2)
-!    call transpose_z_to_y(tb3,te2)
-!    call transpose_z_to_y(tc3,tf2)
-!    call transpose_y_to_x(td2,tg1)
-!    call transpose_y_to_x(te2,th1)
-!    call transpose_y_to_x(tf2,ti1)
-!    call transpose_y_to_x(ta2,td1)
-!    call transpose_y_to_x(tb2,te1)
-!    call transpose_y_to_x(tc2,tf1)
-    !du/dx=ta1 du/dy=td1 and du/dz=tg1
-    !dv/dx=tb1 dv/dy=te1 and dv/dz=th1
-    !dw/dx=tc1 dw/dy=tf1 and dw/dz=ti1
+!        !! Write vorticity as an example of post processing
+!     !x-derivatives
+! !    call derx (ta1,ux1,di1,sx,ffx,fsx,fwx,xsize(1),xsize(2),xsize(3),0)
+! !    call derx (tb1,uy1,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
+! !    call derx (tc1,uz1,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
+!     !y-derivatives
+! !    call transpose_x_to_y(ux1,td2)
+! !    call transpose_x_to_y(uy1,te2)
+! !    call transpose_x_to_y(uz1,tf2)
+! !    call dery (ta2,td2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
+! !    call dery (tb2,te2,di2,sy,ffy,fsy,fwy,ppy,ysize(1),ysize(2),ysize(3),0)
+! !    call dery (tc2,tf2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
+!     !!z-derivatives
+! !    call transpose_y_to_z(td2,td3)
+! !    call transpose_y_to_z(te2,te3)
+! !    call transpose_y_to_z(tf2,tf3)
+! !    call derz (ta3,td3,di3,sz,ffzp,fszp,fwzp,zsize(1),zsize(2),zsize(3),1)
+! !    call derz (tb3,te3,di3,sz,ffzp,fszp,fwzp,zsize(1),zsize(2),zsize(3),1)
+! !    call derz (tc3,tf3,di3,sz,ffz,fsz,fwz,zsize(1),zsize(2),zsize(3),0)
+!     !!all back to x-pencils
+! !    call transpose_z_to_y(ta3,td2)
+! !    call transpose_z_to_y(tb3,te2)
+! !    call transpose_z_to_y(tc3,tf2)
+! !    call transpose_y_to_x(td2,tg1)
+! !    call transpose_y_to_x(te2,th1)
+! !    call transpose_y_to_x(tf2,ti1)
+! !    call transpose_y_to_x(ta2,td1)
+! !    call transpose_y_to_x(tb2,te1)
+! !    call transpose_y_to_x(tc2,tf1)
+!     !du/dx=ta1 du/dy=td1 and du/dz=tg1
+!     !dv/dx=tb1 dv/dy=te1 and dv/dz=th1
+!     !dw/dx=tc1 dw/dy=tf1 and dw/dz=ti1
 
-!    di1(:,:,:)=sqrt((tf1(:,:,:)-th1(:,:,:))**2+(tg1(:,:,:)-tc1(:,:,:))**2+&
-!         (tb1(:,:,:)-td1(:,:,:))**2)
-!    if (iibm==2) then
-!       di1(:,:,:) = (one - ep1(:,:,:)) * di1(:,:,:)
-!    endif
-!    uvisu=0.
-!    call fine_to_coarseV(1,di1,uvisu)
-!994 format('vort',I3.3)
-!    write(filename, 994) itime/ioutput
-!    call decomp_2d_write_one(1,uvisu,filename,2)
+! !    di1(:,:,:)=sqrt((tf1(:,:,:)-th1(:,:,:))**2+(tg1(:,:,:)-tc1(:,:,:))**2+&
+! !         (tb1(:,:,:)-td1(:,:,:))**2)
+! !    if (iibm==2) then
+! !       di1(:,:,:) = (one - ep1(:,:,:)) * di1(:,:,:)
+! !    endif
+! !    uvisu=0.
+! !    call fine_to_coarseV(1,di1,uvisu)
+! !994 format('vort',I3.3)
+! !    write(filename, 994) itime/ioutput
+! !    call decomp_2d_write_one(1,uvisu,filename,2)
 
-    return
+  return
   end subroutine postprocess_tbl
-
-  subroutine perturb_init_tbl(ta1,tb1,tc1)
-   USE decomp_2d
-   USE decomp_2d_io
-   USE variables
-   USE param
-   USE MPI
-   implicit none
-   real(mytype),dimension(xsize(1),xsize(2),xsize(3)) :: ta1,tb1,tc1
-   real(mytype) :: y,r,r3,x,z,h,aform
-   integer :: k,j,i,ijk,fh,ierror,ii,is,code
-   integer (kind=MPI_OFFSET_KIND) :: disp
-   real(mytype), dimension(ysize(2)) :: um
-   integer, dimension (:), allocatable :: seed
-
-  !call system_clock(count=code)
-   code=0 !fixing seed!
-   call random_seed(size = ii)
-   call random_seed(put = code+63946*nrank*(/ (i - 1, i = 1, ii) /))
-   call random_number(ta1)
-   call random_number(tb1)
-   call random_number(tc1)
-   
-   aform = 0.23369497_mytype
-   do k=1,xsize(3)
-      z=real((k+xstart(3)-1-1),mytype)*dz
-      do j=1,xsize(2)
-      if (istret.eq.0) y=(j+xstart(2)-1-1)*dy
-      if (istret.ne.0) y=yp(j+xstart(2)-1)
-      
-         um = (one-erf(aform*y))
-         do i=1,xsize(1)
-      
-         x=real(i-1,mytype)*dx
-         ta1(i,j,k)=init_noise*um(j)*(two*ta1(i,j,k)-one)+erf(y*aform)+&
-         4*init_noise*(y*exp(-y)/0.3678784468818499_mytype)*&
-         ( cos(z*pi/five)*cos(x*pi/five) + &
-            cos((x+((one+sqrt(five))*half))*pi/five)*cos((z+((one+sqrt(five))*half))*pi/five) )
-
-         tb1(i,j,k)=init_noise*um(j)*(two*tb1(i,j,k)-one)
-         tc1(i,j,k)=init_noise*um(j)*(two*tc1(i,j,k)-one)
-         enddo
-      enddo
-   enddo
-
-   return
-  end subroutine perturb_init_tbl
-    !############################################################################
+  !############################################################################
   subroutine momentum_forcing_tbl(dux1,duy1,duz1,ux1,uy1,uz1,phi1)
-    !
-    !*******************************************************************************
   
       USE param
       USE variables
@@ -513,9 +487,46 @@ end subroutine tbl_flrt
       real(mytype),dimension(xsize(1),xsize(2),xsize(3), ntime) :: dux1, duy1, duz1
       real(mytype),dimension(xsize(1),xsize(2),xsize(3)) :: ux1, uy1, uz1
       real(mytype),dimension(xsize(1),xsize(2),xsize(3), numscalar) :: phi1
-  
+      real(mytype) :: thetad
       integer :: j
      
+      thetad = 0.0d0
+      call comp_thetad(ux1,uy1,thetad)
+
+      ! !temporal TBL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! call dery (tg2,ux2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
+      ! call dery (th2,uy2,di2,sy,ffy,fsy,fwy,ppy,ysize(1),ysize(2),ysize(3),0)
+      ! call dery (ti2,uz2,di2,sy,ffyp,fsyp,fwyp,ppy,ysize(1),ysize(2),ysize(3),1)
+      ! if (itime.eq.1) then
+      !   do j=1,xsize(2)
+      !   if (istret.eq.0) y=real(j+xstart(2)-1-1,mytype)*dy
+      !   if (istret.ne.0) y=yp(j+xstart(2)-1)
+      !   td1(:,j,:) = y
+      !   te1(:,j,:) = y
+      !   tf1(:,j,:) = y
+      !   enddo
+      !   !write(filename,"('./data/tcx',I4.4)") 0
+      !   !call decomp_2d_write_one(1,td1,filename,2)
+      !   !write(filename,"('./data/tcy',I4.4)") 0
+      !   !call decomp_2d_write_one(1,te1,filename,2)
+      !   !write(filename,"('./data/tcz',I4.4)") 0 
+      !   !call decomp_2d_write_one(1,tf1,filename,2)
+      ! endif
+
+      ! call transpose_y_to_x(tg2,td1)
+      ! call transpose_y_to_x(th2,te1)
+      ! call transpose_y_to_x(ti2,tf1)
+
+      !   !if(nrank.eq.0)print *,'Forcing theta dot=',thetad
+      !   do j=1,xsize(2)
+      !   if (istret.eq.0) y=real(j+xstart(2)-1-1,mytype)*dy
+      !   if (istret.ne.0) y=yp(j+xstart(2)-1)
+      !   td1(:,j,:) = thetad*y*td1(:,j,:)
+      !   te1(:,j,:) = thetad*y*te1(:,j,:)
+      !   tf1(:,j,:) = thetad*y*tf1(:,j,:)
+      !   enddo
+
+
       ! !! BL Forcing (Pressure gradient or geostrophic wind)
       ! if (iPressureGradient.eq.1) then
       !    dux1(:,:,:,1)=dux1(:,:,:,1)+ustar**2./dBL
@@ -540,8 +551,9 @@ end subroutine tbl_flrt
       !    duy1(:,:,:,1)=duy1(:,:,:,1)+gravv*phi1(:,:,:,1)/Tref
       ! endif
   
-      return
-    end subroutine momentum_forcing_tbl
+  return
+  end subroutine momentum_forcing_tbl
+  !############################################################################
   subroutine comp_thetad(ux1,uy1,thetad)
   USE MPI
   USE decomp_2d
@@ -559,7 +571,8 @@ end subroutine tbl_flrt
   real(mytype),dimension(ysize(2)) :: ux2m,ux2m_old,uxuy2pm
   real(mytype),dimension(ysize(2)) :: ydudy2m,dudy2m,du2dy22m,duxuy2pm
   real(mytype) :: resi,resi1,cf_ref,delta
-  real(mytype) :: ttheta,thetad,theta1,theta2
+  real(mytype),intent(out) :: thetad
+  real(mytype) :: ttheta,theta1,theta2
   real(mytype) :: theta3,thetad1,thetad2,thetad3
   real(mytype) :: y,tau_wall,tau_wall1,ufric,temp,utau
   real(8)      :: tstart
@@ -701,14 +714,13 @@ end subroutine tbl_flrt
  
      if(itime.eq.ifirst) then
       write(fileformat, '( "(",I4,"(E16.8),A)" )' ) ny
-      open(67,file='./out/00_yp',status='unknown',form='formatted',access='direct',recl=(ny*16+1))
+      open(67,file='00_yp',status='unknown',form='formatted',access='direct',recl=(ny*16+1))
       write(67,fileformat,rec=1) yp(:) ;close(67)
      endif
  
    endif
    return
    end
-   !############################################################################
   !############################################################################
    subroutine outp(field,filename) !outpost to disk buffered quantities
       USE param
